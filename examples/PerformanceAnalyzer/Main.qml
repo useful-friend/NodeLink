@@ -37,6 +37,35 @@ ApplicationWindow {
         running: false
         anchors.centerIn: parent
     }
+
+    function selectAll() {
+        busyIndicator.running = true
+        statusText.text = "Selecting..."
+        statusText.color = "#FF9800"
+
+        Qt.callLater(function () {
+            const startTime = Date.now()
+            console.log("(" + Object.keys(scene.nodes).length + ") Nodes, (" +
+                        Object.keys(scene.links).length + ") Links and (" +
+                        Object.keys(scene.containers).length + ") Containers to select")
+
+            scene.selectionModel.selectAll(scene.nodes, scene.links, scene.containers)
+
+            const elapsed = Date.now() - startTime
+            console.log("Selected items:", Object.keys(scene.selectionModel.selectedModel).length)
+            console.log("Time elapsed:", elapsed, "ms")
+            statusText.text = "Selected all items (" + elapsed + "ms)"
+            statusText.color = "#4CAF50"
+            busyIndicator.running = false
+        })
+    }
+
+    //! Select all nodes and links
+    Shortcut {
+        sequence: "Ctrl+A"
+        onActivated: selectAll()
+    }
+
     // Input control
     Rectangle {
         anchors.right: view.right
@@ -44,7 +73,7 @@ ApplicationWindow {
         anchors.topMargin: 50
         anchors.rightMargin: 50
         width: 220
-        height: 340
+        height: 420
         color: "#2d2d2d"
         border.color: "#3e3e3e"
         radius: 8
@@ -127,14 +156,32 @@ ApplicationWindow {
                 }
                 onDoubleClicked: clicked()
             }
+
             Button {
                 text: "Select All"
                 width: parent.width - 30
+                enabled: scene?.nodes ? Object.keys(scene.nodes).length > 0 : false
+
+                onClicked: selectAll()
+
+                onDoubleClicked: clicked()
+            }
+
+            Button {
+                text: "Clear Selection"
+                width: parent.width - 30
+                enabled: scene?.selectionModel ? Object.keys(scene.selectionModel.selectedModel).length > 0 : false
+
                 onClicked: {
-                    console.time("selection")
-                    scene.selectionModel.selectAll(scene.nodes, scene.links, scene.containers)
-                    console.timeEnd("selection")
+                    const startTime = Date.now()
+                    console.log("Items to deselect:", Object.keys(scene.selectionModel.selectedModel).length)
+                    scene.selectionModel.clear()
+                    const elapsed = Date.now() - startTime
+                    console.log("Time elapsed:", elapsed, "ms")
+                    statusText.text = `Cleared selection (${elapsed}ms)`
+                    statusText.color = "#FF9800"
                 }
+
                 onDoubleClicked: clicked()
             }
         }
@@ -147,7 +194,7 @@ ApplicationWindow {
         anchors.topMargin: 50
         anchors.leftMargin: 50
         width: 160
-        height: 120
+        height: 160
         color: "#2d2d2d"
         border.color: "#3e3e3e"
         radius: 8
@@ -159,7 +206,7 @@ ApplicationWindow {
             spacing: 12
 
             Text {
-                text: "Nodes Monitor"
+                text: "Scene Monitor"
                 color: "#ffffff"
                 font.bold: true
                 font.pixelSize: 16
@@ -200,6 +247,23 @@ ApplicationWindow {
                     id: linkCountText
                     text: "0"
                     color: "#9C27B0"
+                    font.pixelSize: 13
+                    font.bold: true
+                }
+            }
+
+            Row {
+                spacing: 10
+                Text {
+                    text: "Selected:"
+                    color: "#cccccc"
+                    font.pixelSize: 13
+                    width: 80
+                }
+                Text {
+                    id: selectedCountText
+                    text: "0"
+                    color: "#4CAF50"
                     font.pixelSize: 13
                     font.bold: true
                 }
@@ -250,6 +314,7 @@ ApplicationWindow {
         if (scene) {
             nodeCountText.text = Object.keys(scene.nodes).length
             linkCountText.text = Object.keys(scene.links).length
+            selectedCountText.text = Object.keys(scene.selectionModel?.selectedModel).length ?? 0
         }
     }
 
@@ -259,6 +324,4 @@ ApplicationWindow {
     FontLoader { source: "qrc:/PerformanceAnalyzer/resources/fonts/Font Awesome 6 Pro-Solid-900.otf" }
     FontLoader { source: "qrc:/PerformanceAnalyzer/resources/fonts/Font Awesome 6 Pro-Regular-400.otf" }
     FontLoader { source: "qrc:/PerformanceAnalyzer/resources/fonts/Font Awesome 6 Pro-Light-300.otf" }
-
-
 }
