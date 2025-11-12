@@ -75,6 +75,9 @@ QSObject {
     //! Container added
     signal containerAdded(Container container)
 
+    //! Containers Removed
+    signal containersRemoved(var containers)
+
     //! Container Removed
     signal containerRemoved(Container container)
 
@@ -237,6 +240,34 @@ QSObject {
             scene._undoCore.undoStack.push(cmdRemoveContainer)
         }
     }
+    //! Deletes containers from scene
+    function deleteContainers(containerUUIds: string) {
+        if (!containerUUIds || containerUUIds.length === 0) {
+            return;
+        }
+
+        var removedContainers = [];
+
+        for (var i = 0; i < containerUUIds.length; i++) {
+            var containerUUId = containerUUIds[i];
+
+            if (!containers[containerUUId]) {
+                continue;
+            }
+
+            selectionModel.remove(containerUUId);
+
+            removedContainers.push(containers[containerUUId]);
+            delete containers[containerUUId];
+        }
+        if (removedContainers.length > 0) {
+            containersRemoved(removedContainers);
+            removedContainers.forEach(container => container.destroy());
+            containersChanged();
+        }
+
+        //TODO: Add undo replaying scenario here
+    }
 
     //! Checks if scene is empty or not
     function isSceneEmpty() : bool {
@@ -369,6 +400,8 @@ QSObject {
             linksChanged();
             nodesChanged();
         }
+
+        //TODO: Add undo replaying code here
     }
 
     //! Deletes a node from the scene
@@ -648,19 +681,23 @@ QSObject {
     //! Delete all selected objects (Node + Link)
     function  deleteSelectedObjects() {
         scene.selectionModel.notifySelectedObject = false;
-        // Delete objects
-        Object.entries(scene.selectionModel.selectedModel).forEach(([key, value]) => {
-            if (value.objectType === NLSpec.ObjectType.Node) {
-                if (!value.guiConfig.locked)
-                    scene.deleteNode(value._qsUuid);
-            }
-            if (value.objectType === NLSpec.ObjectType.Container) {
-                scene.deleteContainer(value._qsUuid);
-            }
-            if (value.objectType === NLSpec.ObjectType.Link) {
-                scene.unlinkNodes(value.inputPort._qsUuid, value.outputPort._qsUuid)
-            }
-        });
+        var nodesToBeDeleted = []
+        var containersToBeDeleted = []
+        for (var i = 0; i < Object.keys(scene.selectionModel.selectedModel).length; ++i) {
+            var key = Object.keys(scene.selectionModel.selectedModel)[i]
+            var item = Object.values(scene.selectionModel.selectedModel)[i]
+            if (!item)
+                continue
+            if (item.objectType === NLSpec.ObjectType.Node ||
+                    item.objectType === NLSpec.ObjectType.Link) //CHECKME: Can we select a link without a connected node? (the node will delete the link too)
+                nodesToBeDeleted.push(key)
+            else if (item.objectType === NLSpec.ObjectType.Container)
+                containersToBeDeleted.push(key)
+        }
+        if (nodesToBeDeleted.length)
+            deleteNodes(nodesToBeDeleted)
+        if (containersToBeDeleted.length)
+            deleteContainers(containersToBeDeleted)
 
         scene.selectionModel.notifySelectedObject = true;
 		// Clear the selection
