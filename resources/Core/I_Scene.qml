@@ -705,55 +705,46 @@ QSObject {
     }
 
     //! Find the nodes that are in the container item.
-    function findNodesInContainerItem(containerItem: rect) {
+    function findNodesInContainerItem(containerItem) {
+        var bandLeft   = containerItem.x;
+        var bandTop    = containerItem.y;
+        var bandRight  = bandLeft + containerItem.width;
+        var bandBottom = bandTop + containerItem.height;
 
-        // Key points of container to generate line equations and it's limits.
-        var rBLeftX = containerItem.x;
-        var rBTopY = containerItem.y;
-        var rBRightX = rBLeftX + containerItem.width;
-        var rBBottomY = rBTopY + containerItem.height;
+        var matches = [];
 
-        var allObjects = [...Object.values(nodes), ...Object.values(containers)];
+        function scan(map) {
+            if (!map) return;
+            for (var key in map) {
+                if (!map.hasOwnProperty(key)) continue;
+                var item = map[key];
+                if (!item || !item.guiConfig) continue;
 
-        var foundObj = allObjects.filter(node => {
-            // Key points of Node to generate line equations and it's limits.
-            var position = node.guiConfig.position
+                var cfg = item.guiConfig;
+                var pos = cfg.position;
+                var nodeLeft   = pos.x;
+                var nodeTop    = pos.y;
+                var nodeRight  = nodeLeft + cfg.width;
+                var nodeBottom = nodeTop  + cfg.height;
 
-            var nodeLeftX = position.x;
-            var nodeTopY = position.y;
-            var nodeRightX = nodeLeftX + node.guiConfig.width;
-            var nodeBottomY = nodeTopY + node.guiConfig.height;
-            // Checking the equations of the containerItem lines and nodes
-            // and their intersection using the obtained limits
-            var isSelected = (rBRightX > nodeLeftX && rBRightX < nodeRightX &&
-                rBBottomY < nodeBottomY && rBBottomY > nodeTopY) ||
-            (rBLeftX < nodeLeftX && rBRightX > nodeRightX &&
-                rBBottomY > nodeTopY && rBBottomY < nodeBottomY) ||
-            (rBLeftX >= nodeLeftX && rBRightX <= nodeRightX &&
-                rBTopY <= nodeTopY && rBBottomY >= nodeBottomY) ||
-            (rBLeftX > nodeLeftX && rBLeftX < nodeRightX &&
-                (rBBottomY < nodeTopY && nodeBottomY < rBBottomY) ||
-            (rBBottomY < nodeTopY && nodeBottomY > rBBottomY &&
-                nodeTopY < rBBottomY)) ||
-            (rBLeftX < nodeLeftX && rBRightX >= nodeRightX &&
-                rBTopY < nodeTopY && nodeBottomY < rBBottomY) ||
-            (rBLeftX > nodeLeftX && rBLeftX < nodeRightX &&
-                rBTopY > nodeTopY && rBTopY < nodeBottomY) ||
-            (nodeLeftX > rBLeftX && rBRightX > nodeLeftX &&
-                rBTopY > nodeTopY && rBTopY < nodeBottomY) ||
-            (rBLeftX < nodeRightX && rBLeftX >  nodeLeftX &&
-                rBBottomY >  nodeTopY && rBBottomY <  nodeBottomY) ||
-            (nodeRightX <= rBRightX && nodeRightX >= rBLeftX &&
-                nodeTopY >= rBTopY && nodeBottomY <= rBBottomY) ||
-            (nodeLeftX <= rBRightX && nodeLeftX >= rBLeftX &&
-                nodeTopY >= rBTopY && nodeBottomY <= rBBottomY);
+                // Axis-aligned rectangle overlap test
+                if (nodeRight <= bandLeft ||
+                    nodeLeft  >= bandRight ||
+                    nodeBottom <= bandTop ||
+                    nodeTop    >= bandBottom) {
+                    continue;
+                }
 
-            // Return the found node that is inside the container.
-            return isSelected;
-        });
+                matches.push(item);
+            }
+        }
 
-        return foundObj;
+        scan(nodes);
+        scan(containers);
+
+        return matches;
     }
+
 
     function copyNodes() {
         copyCalled();
