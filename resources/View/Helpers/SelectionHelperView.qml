@@ -53,7 +53,8 @@ Item {
             selectionRubberBandItem.width = Math.abs(lastPressPoint.x - mouse.x);
             selectionRubberBandItem.height = Math.abs(lastPressPoint.y - mouse.y);
 
-            selectionTimer.start();
+            if (!selectionTimer.running)
+                selectionTimer.start()
         }
     }
 
