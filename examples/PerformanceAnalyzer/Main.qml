@@ -15,6 +15,7 @@ ApplicationWindow {
 
     property PerformanceScene scene: null
     property int nodeCount: 100
+    property bool spawnInsideView: true
 
     Component.onCompleted: {
         NLCore.defaultRepo = NLCore.createDefaultRepo(["QtQuickStream", "PerformanceAnalyzer"])
@@ -73,7 +74,7 @@ ApplicationWindow {
         anchors.topMargin: 50
         anchors.rightMargin: 50
         width: 220
-        height: 420
+        height: 460
         color: "#2d2d2d"
         border.color: "#3e3e3e"
         radius: 8
@@ -114,6 +115,16 @@ ApplicationWindow {
                         radius: 4
                     }
                 }
+            }
+
+            Button {
+                id: spawnModeButton
+                width: parent.width - 30
+                checkable: true
+                checked: spawnInsideView
+                text: checked ? "Inside View" : "Across Scene"
+                onToggled: spawnInsideView = checked
+                highlighted: true
             }
 
             Button {
@@ -271,6 +282,10 @@ ApplicationWindow {
         }
     }
 
+    function randBetween(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
     // Node creation timer
     Timer {
         id: timer
@@ -279,12 +294,20 @@ ApplicationWindow {
         onTriggered: {
             // Create all node pairs in one batch(the timer is not neeeded here, kept just in case of having shorter diffs)
             var pairs = []
-            for (var i = 0; i < nodeCount; i++) {
-                pairs.push({
-                    xPos: Math.random() * scene.sceneGuiConfig.contentWidth,
-                    yPos: Math.random() * scene.sceneGuiConfig.contentHeight,
-                    nodeName: "test_" + i
-                })
+            var guiCfg = scene.sceneGuiConfig
+            const invZoom = 1 / guiCfg.zoomFactor
+            const left = guiCfg.contentX * invZoom
+            const top = guiCfg.contentY * invZoom
+            const right = left + guiCfg.sceneViewWidth * invZoom - 380
+            const bottom = top + guiCfg.sceneViewHeight * invZoom - 130
+
+            for (let i = 0; i < nodeCount; ++i) {
+                const xPos = spawnInsideView ? randBetween(left, right)
+                                             : Math.random() * guiCfg.contentWidth
+                const yPos = spawnInsideView ? randBetween(top, bottom)
+                                             : Math.random() * guiCfg.contentHeight
+
+                pairs.push({ xPos, yPos, nodeName: "test_" + i })
             }
 
             scene.createPairNodes(pairs)
